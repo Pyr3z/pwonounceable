@@ -782,7 +782,7 @@ int main(int argc, const char* argv[])
 
   /* WARNING: CLI argument order is hard-coded! */
   /* TODO use getopt */
-  switch (argc)
+  switch (argc - 1)
   {
     case 2:
       cap = atoi(argv[ARGI_CAP]);

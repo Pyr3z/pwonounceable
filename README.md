@@ -7,3 +7,24 @@ So far the only tool here is **3pw** — based off of [Tom Van Vleck's `gpw` pro
  - Everything here is ANSI C compliant, so you _should_ also be able to compile virtually any other compiler.
 2. Run the built binary from any TTY.
 3. Current optional arguments are documented in the header of the main `3pw.c` file.
+
+## 3pw example output
+```bash
+# Default: 9 characters, case = 1 (pascal)
+# ./bin/3pw
+UlpOrtHen
+RagEnsOrt
+EekSioNic
+
+# 15 characters, Default: case = 1 (pascal)
+# ./bin/3pw 15
+AchEdmAndOndUmp
+LbuRgeLdiCisCol
+HirReeNtaHleVio
+
+# No pascal case - vanilla gpw
+# ./bin/3pw 6 0
+meaggi
+imbort
+etisma
+```

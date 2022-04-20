@@ -782,6 +782,8 @@ int main(int argc, const char* argv[])
 
   /* WARNING: CLI argument order is hard-coded! */
   /* TODO use getopt */
+  pwl = DEFAULT_PWL;
+  cap = DEFAULT_CAP;
   switch (argc - 1)
   {
     case 2:
@@ -790,23 +792,19 @@ int main(int argc, const char* argv[])
     case 1:
       pwl = atoi(argv[ARGI_PWL]);
       break;
-    default:
-      pwl = DEFAULT_PWL;
-      cap = DEFAULT_CAP;
-      break;
   }
 
   if (MAX_OUT_LEN < pwl)
   {
     printf("ERR arg%d: %d is too many characters; "
-           "max = %d", ARGI_PWL, pwl, MAX_OUT_LEN);
+           "max = %d\n", ARGI_PWL, pwl, MAX_OUT_LEN);
     exit(EXIT_FAILURE_BADINPUT);
   }
 
   if (cap < 0 || cap > 1)
   {
     printf("ERR arg%d: valid capitalization arguments are (0=none,1=pascal); "
-           "given = %d", ARGI_CAP, cap);
+           "given = %d\n", ARGI_CAP, cap);
     exit(EXIT_FAILURE_BADINPUT);
   }
 

@@ -6,7 +6,7 @@
  * 
  *  @details
  *    Adapted from Tom Van Vleck's (THVV) JavaScript version of `gpw`, this
- *    self-contained program generates a series of trigraphs, which are 3-letter
+ *    self-contained program generates a series of trigraphs — meaning 3-letter
  *    combinations which are statistically likely to occur near each other in a
  *    given dictionary (in this case, a standard GNU English dictionary).
  * 
@@ -21,7 +21,7 @@
  *    - THVV  1996-04-14  converted to Java
  *    - THVV  1997-07-30  fixed for Netscape 4.0
  *    - THVV  2009-11-27  ported to Javascript
- *    - Levi  2022-04-19  Re-coded in C (v2)
+ *    - Levi  2022-04-19  Re-coded in ANSI C (v2)
  * 
  *    For pre-me (Levi) history info, see
  *    <www.multicians.org/thvv/gpw.html>.
@@ -53,7 +53,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
-#include <stdbool.h>
 
 
 /* ~ CONSTANTS */

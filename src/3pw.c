@@ -55,9 +55,12 @@
 **/
 
 /* ~ C INCLUDES */
-#include <stdlib.h> /* atoi, srand, rand, EXIT_SUCCESS */
-#include <time.h>   /* time */
-#include <stdio.h>  /* printf, puts */
+#include <stdlib.h>   /* atoi, srand, rand, EXIT_SUCCESS */
+#include <time.h>     /* time */
+#include <stdio.h>    /* printf, puts */
+#include <stdbool.h>  /* bool */
+
+#include "../inc/errprintf.h" /* errprintf */
 
 
 /* ~ CONSTANTS */
@@ -86,6 +89,9 @@
 
 /* you might be able to play w/ this alphabet... /shrug */
 static const char ABC[] = "abcdefghijklmnopqrstuvwxyz";
+static const char CVS[] = "VCCCVCCCVCCCCCVCCCCCVCCCVC";
+  /* (consonant/vowel map) */
+
 #define N_ABC (int)(sizeof(ABC)-1)
 
 /* The next 679 lines are the meat of the thing copy-pasted from the OG js: */
@@ -773,6 +779,7 @@ static const int TRIS[N_ABC][N_ABC][N_ABC] = {{
 static int  Do3pw(int pwl, char out[MAX_OUT_LEN+1]);
 static int  PickTrigraph(int r, char out[3]);
 static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize);
+static bool IsConsonant(char c);
 /* ~ */
 
 
@@ -790,36 +797,47 @@ int main(int argc, const char* argv[])
   switch (argc - 1)
   {
     case ARGI_CAP: /* yucky magic numbers & strings */
-      if (argv[ARGI_CAP][0] != '-')
+      if (argv[ARGI_CAP][0] != '-' || argv[ARGI_CAP][1])
       {
         cap = atoi(argv[ARGI_CAP]);
       }
       /* intentional fall through */
     case ARGI_QTY:
-      if (argv[ARGI_QTY][0] != '-')
+      if (argv[ARGI_QTY][0] != '-' || argv[ARGI_QTY][1])
       {
         qty = atoi(argv[ARGI_QTY]);
       }
       /* weeeeeeeeeeeeeeeeeeeeee. */
     case ARGI_PWL:
-      if (argv[ARGI_PWL][0] != '-')
+      if (argv[ARGI_PWL][0] != '-' || argv[ARGI_PWL][1])
       {
         pwl = atoi(argv[ARGI_PWL]);
       }
       break;
   }
 
-  if (MAX_OUT_LEN < pwl)
+  if (pwl < 0)
   {
-    printf("ERR arg%d:  %d is too many characters; "
-           "max = %d\n", ARGI_PWL, pwl, MAX_OUT_LEN);
+    errprintf("ERR arg%d: nonsensical negative value; "
+              "pwl = %d\n", ARGI_PWL, pwl);
     exit(EXIT_FAILURE_BADINPUT);
+  }
+  else if (MAX_OUT_LEN < pwl)
+  {
+    errprintf("ERR arg%d: %d is too many characters; "
+              "max = %d\n", ARGI_PWL, pwl, MAX_OUT_LEN);
+    exit(EXIT_FAILURE_BADINPUT);
+  }
+  else if (pwl == 0)
+  {
+    /* early-out noop */
+    exit(EXIT_SUCCESS);
   }
 
   if (qty < 0) /* == 0 is permitted as valid user input ~> just do no-op */
   {
-    printf("ERR arg%d:  %d is an invalid quantity of output strings; "
-           "min = 0\n", ARGI_QTY, qty);
+    errprintf("ERR arg%d: %d is an invalid quantity of output strings; "
+              "min = 0\n", ARGI_QTY, qty);
     exit(EXIT_FAILURE_BADINPUT);
   }
 
@@ -839,8 +857,8 @@ int main(int argc, const char* argv[])
 
     if (n != pwl)
     {
-      printf("WRN:  Bad output length? "
-             "pwl = %d, n = %d, output = \"%s\"\n", pwl, n, out);
+      errprintf("WRN: Bad output length? "
+                "pwl = %d, n = %d, output = \"%s\"\n", pwl, n, out);
     }
   }
 
@@ -856,18 +874,25 @@ static int Do3pw(int pwl, char out[MAX_OUT_LEN+1])
   int i, j, k;
 
   /* Begin algo: */
-
+FirstTrigraph:
   r = rand() % N_COMBS;
-
   n = PickTrigraph(r, out);
-
   if (n < 3)
   {
-    printf("ERR: EXIT_FAILURE_SHITCODE; PickTrigraph() returned %d. "
-           "partial output = \"%s\"\n", n, out);
+    errprintf("ERR: EXIT_FAILURE_SHITCODE; PickTrigraph() returned %d. "
+              "partial output = \"%s\"\n", n, out);
     exit(EXIT_FAILURE_SHITCODE);
   }
-  else if (n >= pwl)
+
+  /* ensure not all consonants for first trigraph */
+  if (IsConsonant(out[0]) && IsConsonant(out[1]) && IsConsonant(out[2]))
+  {
+    /* reset and try another trigraph. */
+    *((unsigned*)out) = 0x00000000;
+    goto FirstTrigraph;
+  }
+  
+  if (n >= pwl)
   {
     for (i = pwl; i < n; ++i)
     {
@@ -947,8 +972,8 @@ static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize)
 
   if (wordsize < 0)
   {
-    printf("ERR:  EXIT_FAILURE_SHITCODE; wordsize = %d, "
-           "partial output = \"%s\"\n", wordsize, out);
+    errprintf("ERR: EXIT_FAILURE_SHITCODE; wordsize = %d, "
+              "partial output = \"%s\"\n", wordsize, out);
     exit(EXIT_FAILURE_SHITCODE);
   }
 
@@ -958,4 +983,10 @@ static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize)
     if (out[i] >= 'a' && out[i] <= 'z')
       out[i] -= ' ';
   }
+}
+
+static bool IsConsonant(char c) /* assumes c is lowercase! [a-z] */
+{
+  unsigned i = (c - 'a');
+  return i < N_ABC && CVS[i] == 'C';
 }

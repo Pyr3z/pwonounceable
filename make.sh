@@ -17,4 +17,10 @@ fi
 
 mkdir -p ${OUT%/*}
 
+# compile
 "$CC" ${CCARGS[@]} ${SRC[@]} -o "$OUT"
+
+# if we have a defined /c/path directory, we probably on wsl => copy exe there
+if [[ $? -eq 0 && -d '/mnt/c/path' ]]; then
+  cp "$OUT" '/mnt/c/path'
+fi

@@ -61,6 +61,7 @@
 #include <stdbool.h>  /* bool */
 
 #include "../inc/errprintf.h" /* errprintf */
+#include "../inc/strhash.h"   /* strhash   */
 
 
 /* ~ CONSTANTS */
@@ -68,9 +69,14 @@
 #define DEFAULT_QTY 8   /* default number of passwords to generate */
 #define DEFAULT_CAP 6   /* default wordsize for PascalCase capitalization */
 
-#define ARGI_PWL 1
-#define ARGI_QTY 2
-#define ARGI_CAP 3
+#ifndef DEFAULT_SEED
+#define DEFAULT_SEED ((unsigned)time(0))
+#endif
+
+#define ARGI_PWL  1
+#define ARGI_QTY  2
+#define ARGI_CAP  3
+#define ARGI_SEED 4
 
 
 #define MAX_OUT_LEN 255         /* = maximum output string length. */
@@ -84,13 +90,12 @@
 #define EXIT_SUCCESS          0x00
 #define EXIT_FAILURE          0x0F
 #define EXIT_FAILURE_BADINPUT 0x1F
-#define EXIT_FAILURE_SHITCODE 0xFF
+#define EXIT_FAILURE_SHITCODE 0xFF /* SHIT */
 
 
 /* you might be able to play w/ this alphabet... /shrug */
 static const char ABC[] = "abcdefghijklmnopqrstuvwxyz";
-static const char CVS[] = "VCCCVCCCVCCCCCVCCCCCVCCCVC";
-  /* (consonant/vowel map) */
+static const char CVS[] = "VCCCVCCCVCCCCCVCCCCCVCCC?C"; /* consonants/vowels */
 
 #define N_ABC (int)(sizeof(ABC)-1)
 
@@ -789,14 +794,27 @@ int main(int argc, const char* argv[])
   /* WARNING: CLI argument order is hard-coded! */
   /* TODO use getopt */
 
-  int pwl, qty, cap; /* input arguments, in order */
+  int pwl, qty, cap;  /* input arguments, in order. */
+  unsigned seed;      /* this one too. */
 
-  pwl = DEFAULT_PWL;
-  qty = DEFAULT_QTY;
-  cap = DEFAULT_CAP;
+  pwl  = DEFAULT_PWL;
+  qty  = DEFAULT_QTY;
+  cap  = DEFAULT_CAP;
+  seed = DEFAULT_SEED;
   switch (argc - 1)
   {
-    case ARGI_CAP: /* yucky magic numbers & strings */
+    /* yucky magic numbers & strings ... will clean l8ter */
+    case ARGI_SEED:
+      seed = (unsigned)atol(argv[ARGI_SEED]);
+      if (!seed)
+      {
+        seed = strhash(argv[ARGI_SEED]);
+        /*
+        errprintf("DBG: string seed \"%s\" ~> %u\n", argv[ARGI_SEED], seed);
+        */
+      }
+      break;
+    case ARGI_CAP:
       if (argv[ARGI_CAP][0] != '-' || argv[ARGI_CAP][1])
       {
         cap = atoi(argv[ARGI_CAP]);
@@ -843,7 +861,7 @@ int main(int argc, const char* argv[])
 
   /* done parsing input arguments. */
 
-  srand(time(0)); /* seed basic PRNG. */
+  srand(seed);
   
   while (qty --> 0)
   {
@@ -874,7 +892,7 @@ static int Do3pw(int pwl, char out[MAX_OUT_LEN+1])
   int i, j, k;
 
   /* Begin algo: */
-FirstTrigraph:
+FirstTrigraph:;
   r = rand() % N_COMBS;
   n = PickTrigraph(r, out);
   if (n < 3)
@@ -885,23 +903,23 @@ FirstTrigraph:
   }
 
   /* ensure not all consonants for first trigraph */
-  if (IsConsonant(out[0]) && IsConsonant(out[1]) && IsConsonant(out[2]))
+  if (IsConsonant(out[0]) &&
+      IsConsonant(out[1]) &&
+      IsConsonant(out[2]))
   {
     /* reset and try another trigraph. */
     *((unsigned*)out) = 0x00000000;
     goto FirstTrigraph;
   }
   
-  if (n >= pwl)
+  if (n >= pwl) /* if smol pwl, need to return LESS than a trigraph */
   {
-    for (i = pwl; i < n; ++i)
-    {
-      out[i] = 0;
-    }
+    /* note: leaves byte after the NUL unchanged in the case of pwl=1 */
+    out[pwl] = 0;
     return pwl;
   }
   
-  /* use statistics lookup to fuzzy select subsequent trigraphs: */
+  /* use combinatorix lookup to kinda fuzzy select subsequent trigraphs: */
   while (n < MAX_OUT_LEN && n < pwl)
   {
     sum = 0;
@@ -913,7 +931,14 @@ FirstTrigraph:
       sum += TRIS[i][j][k];
     }
 
-    if (!sum) break;
+    if (!sum)
+    {
+      /* no matching trigraphs at all ... */
+      /* ... so just gonna improvise here ... */
+      static const char VOWELS[] = "aeiouy";
+      out[n++] = VOWELS[r % (sizeof(VOWELS)-1)];
+      continue;
+    }
 
     r = rand() % sum;
     sum = 0;

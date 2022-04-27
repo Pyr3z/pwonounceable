@@ -12,12 +12,11 @@
 
 unsigned strnhash(const char* str, int n)
 {
-  unsigned hash = 0xDEADBEEF;
+  unsigned hash = 0xDEADBEEF * 73;
 
   while (n --> 0 && str[n])
   {
-    unsigned b = (unsigned)str[n];
-    hash = b ^ (hash + ((hash << 5) | (hash >> 27)));
+    hash = ((unsigned)str[n]) ^ (hash + ((hash << 5) | (hash >> 27)));
   }
 
   return hash;

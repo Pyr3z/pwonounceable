@@ -84,8 +84,9 @@
 #define EXIT_FAILURE_SHITCODE 0xFF
 
 
+/* you might be able to play w/ this alphabet... /shrug */
 static const char ABC[] = "abcdefghijklmnopqrstuvwxyz";
-#define N_ABC (int)sizeof(ABC) /* you might be able to play w/ this alphabet */
+#define N_ABC (int)(sizeof(ABC)-1)
 
 /* The next 679 lines are the meat of the thing copy-pasted from the OG js: */
 static const int TRIS[N_ABC][N_ABC][N_ABC] = {{

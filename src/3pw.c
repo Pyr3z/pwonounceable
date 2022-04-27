@@ -50,33 +50,38 @@
 **/
 
 /* ~ C INCLUDES */
-#include <stdlib.h>
-#include <time.h>
-#include <stdio.h>
+#include <stdlib.h> /* atoi, srand, rand, EXIT_SUCCESS */
+#include <time.h>   /* time */
+#include <stdio.h>  /* printf, puts */
+#include <string.h> /* strncmp */
 
 
 /* ~ CONSTANTS */
-static const char ABC[] = "abcdefghijklmnopqrstuvwxyz";
-#define N_ABC (int)sizeof(ABC) /* you might be able to change this ABC up */
+#define DEFAULT_PWL 9   /* default password length */
+#define DEFAULT_QTY 8   /* default number of passwords to generate */
+#define DEFAULT_CAP 6   /* default wordsize for PascalCase capitalization */
 
 #define ARGI_PWL 1
-#define ARGI_CAP 2
+#define ARGI_QTY 2
+#define ARGI_CAP 3
 
-#define DEFAULT_PWL 9       /* the default password length */
-#define DEFAULT_CAP 1       /* 1 = pascal case trigraphs, 0 = all lowercase */
 
-#define MAX_OUT_LEN 256     /* = maximum output string length + 1 */
-
-#define N_COMBS     125729  /* precalc'd value based on the combinatorix */
+#define MAX_OUT_LEN 255         /* = maximum output string length. */
+#define N_COMBS     125729      /* precalc'd value based on the combinatorix. */
+#define CAP_FIRST   MAX_OUT_LEN /* wordsize to Capitalize only first letter. */
+#define CAP_NONE    0           /* wordsize to Capitalize nothing. */
 
 
 #undef  EXIT_SUCCESS /* to squelch pedantic gcc warnings; let's be explicit */
 #undef  EXIT_FAILURE /* ^ */
-
 #define EXIT_SUCCESS          0x00
 #define EXIT_FAILURE          0x0F
 #define EXIT_FAILURE_BADINPUT 0x1F
+#define EXIT_FAILURE_SHITCODE 0xFF
 
+
+static const char ABC[] = "abcdefghijklmnopqrstuvwxyz";
+#define N_ABC (int)sizeof(ABC) /* you might be able to play w/ this alphabet */
 
 /* The next 679 lines are the meat of the thing copy-pasted from the OG js: */
 static const int TRIS[N_ABC][N_ABC][N_ABC] = {{
@@ -759,60 +764,127 @@ static const int TRIS[N_ABC][N_ABC][N_ABC] = {{
 }};
 
 
-/*
-~ begin my C interpretation of the gpw algo ~
-*/
-
-
 /* ~ FUNCTION PROTOTYPES */
-static int  ChooseStartingTri(int r, char out[3]);
-static void Lower2PascalCase(char out[MAX_OUT_LEN]);
+static int  Do3pw(int pwl, char out[MAX_OUT_LEN+1]);
+static int  PickTrigraph(int r, char out[3]);
+static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize);
+/* ~ */
 
 
-/* ~ PROGRAM ENTRY */
+/* ~ PROGRAM ENTRY ~ begin my ANSI C interpretation of the gpw.js algo */
 int main(int argc, const char* argv[])
 {
-  int   pwl, cap;
-  int   n;
-  int   r;
-  int   sum;
-  int   i, j, k;
-  char  out[MAX_OUT_LEN] = { 0 };
-
   /* WARNING: CLI argument order is hard-coded! */
   /* TODO use getopt */
+
+  int pwl, qty, cap; /* input arguments, in order */
+
   pwl = DEFAULT_PWL;
+  qty = DEFAULT_QTY;
   cap = DEFAULT_CAP;
   switch (argc - 1)
   {
-    case 2:
-      cap = atoi(argv[ARGI_CAP]);
+    case ARGI_CAP: /* yucky magic numbers & strings */
+      if (!strncmp(argv[ARGI_CAP], "--cap", 5))
+      {
+        if (argv[ARGI_CAP][5])
+          cap = atoi(argv[ARGI_CAP] + 5);
+        else
+          cap = CAP_FIRST;
+      }
+      else if (!strncmp(argv[ARGI_CAP], "--no-cap", 8))
+      {
+        cap = CAP_NONE;
+      }
+      else
+      {
+        printf("WRN arg%d:  \"%s\" is an invalid capitalization arg; "
+               "valid opts: --cap[n], --no-cap;\n"
+               "using default wordsize: %d\n", ARGI_CAP, argv[ARGI_CAP], cap);
+      }
       /* intentional fall through */
-    case 1:
-      pwl = atoi(argv[ARGI_PWL]);
+    case ARGI_QTY:
+      if (argv[ARGI_QTY][0] != '-')
+      {
+        qty = atoi(argv[ARGI_QTY]);
+      }
+      /* weeeeeeeeeeeeeeeeeeeeee. */
+    case ARGI_PWL:
+      if (argv[ARGI_PWL][0] != '-')
+      {
+        pwl = atoi(argv[ARGI_PWL]);
+      }
       break;
   }
 
   if (MAX_OUT_LEN < pwl)
   {
-    printf("ERR arg%d: %d is too many characters; "
+    printf("ERR arg%d:  %d is too many characters; "
            "max = %d\n", ARGI_PWL, pwl, MAX_OUT_LEN);
     exit(EXIT_FAILURE_BADINPUT);
   }
 
-  if (cap < 0 || cap > 1)
+  if (qty < 0) /* == 0 is permitted as valid user input ~> just do no-op */
   {
-    printf("ERR arg%d: valid capitalization arguments are (0=none,1=pascal); "
-           "given = %d\n", ARGI_CAP, cap);
+    printf("ERR arg%d:  %d is an invalid quantity of output strings; "
+           "min = 0\n", ARGI_QTY, qty);
     exit(EXIT_FAILURE_BADINPUT);
   }
 
-  srand(time(0));
+  /* done parsing input arguments. */
+
+  srand(time(0)); /* seed basic PRNG. */
+  
+  while (qty --> 0)
+  {
+    char out[MAX_OUT_LEN+1] = { 0 };
+    int  n;
+    
+    n = Do3pw(pwl, out);
+
+    Capitalize(out, cap);
+    puts(out);
+
+    if (n != pwl)
+    {
+      printf("WRN:  Bad output length? "
+             "pwl = %d, n = %d, output = \"%s\"\n", pwl, n, out);
+    }
+  }
+
+  exit(EXIT_SUCCESS);
+}
+
+
+/* ~ PRIVATE FUNCS --> EOF */
+
+static int Do3pw(int pwl, char out[MAX_OUT_LEN+1])
+{
+  int r, n, sum;
+  int i, j, k;
+
+  /* Begin algo: */
+
   r = rand() % N_COMBS;
 
-  n = ChooseStartingTri(r, out);
+  n = PickTrigraph(r, out);
+
+  if (n < 3)
+  {
+    printf("ERR: EXIT_FAILURE_SHITCODE; PickTrigraph() returned %d. "
+           "partial output = \"%s\"\n", n, out);
+    exit(EXIT_FAILURE_SHITCODE);
+  }
+  else if (n >= pwl)
+  {
+    for (i = pwl; i < n; ++i)
+    {
+      out[i] = 0;
+    }
+    return pwl;
+  }
   
-  /* do the rest of the walk */
+  /* use statistics lookup to fuzzy select subsequent trigraphs: */
   while (n < MAX_OUT_LEN && n < pwl)
   {
     sum = 0;
@@ -840,19 +912,10 @@ int main(int argc, const char* argv[])
     }
   } /* end while */
 
-  if (cap)
-  {
-    Lower2PascalCase(out);
-  }
-
-  puts(out);
-  exit(EXIT_SUCCESS);
+  return n;
 }
 
-
-/* ~ PRIVATE FUNCS --> EOF */
-
-static int ChooseStartingTri(int r, char out[3])
+static int PickTrigraph(int r, char out[3])
 {
   int sum;
   int i, j, k;
@@ -880,12 +943,27 @@ static int ChooseStartingTri(int r, char out[3])
   return 0;
 }
 
-static void Lower2PascalCase(char out[MAX_OUT_LEN])
+static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize)
 {
   int i;
-  for (i = 0; i < MAX_OUT_LEN && out[i]; i += 3)
+
+  if (wordsize == CAP_NONE)
   {
-    if (out[i] >= 'a')
-      out[i] -= 32;
+    /* valid no-op -> leaves output lowercase */
+    return;
+  }
+
+  if (wordsize < 0)
+  {
+    printf("ERR:  EXIT_FAILURE_SHITCODE; wordsize = %d, "
+           "partial output = \"%s\"\n", wordsize, out);
+    exit(EXIT_FAILURE_SHITCODE);
+  }
+
+  /* do capitalize */
+  for (i = 0; i < MAX_OUT_LEN+1 && out[i]; i += wordsize)
+  {
+    if (out[i] >= 'a' && out[i] <= 'z')
+      out[i] -= ' ';
   }
 }

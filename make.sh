@@ -8,7 +8,9 @@ CC=${1:-$(which gcc)}
 shift
 
 if [[ $# -eq 0 ]]; then # default gcc [and clang] args
-  CCARGS=("-ansi" "-Werror" "-Wall" "-Wextra" "-pedantic")
+  CCARGS=("-ansi" "-Wall" "-Wextra" "-pedantic")
+  CCARGS+=("-Wno-implicit-fallthrough")
+  CCARGS+=("-Werror")
 else
   CCARGS=$@
 fi

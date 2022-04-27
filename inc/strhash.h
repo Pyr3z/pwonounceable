@@ -1,9 +1,9 @@
 /** @file   strhash.h
- *  @author [Levi Perez](https://leviperez.dev/3pw)
+ *  @author [Levi Perez](https://leviperez.dev)
  *  @date   2022-04-26
  *  
- *  @brief  Simple include implementing an dumb string hash algorithm unworthy
- *          of name or mention.
+ *  @brief  Simple include implementing a dumb string hash algorithm unworthy
+ *          of special name or mention.
 **/
 
 #pragma once

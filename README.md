@@ -1,5 +1,5 @@
 # pwonounceable
-(CLI) tools for generating human-pronounceable passwords.
+Originally (CLI) tools for generating human-pronounceable passwords, this WIP suite has become dedicated to generating pseudo-randomized, general-purpose strings that a human could (pwobably) pronounce.
 
 ## How use?
 So far the only tool here is **3pw** — based off of [Tom Van Vleck's `gpw` program](https://multicians.org/thvv/gpw.html).

@@ -1,7 +1,7 @@
 #! /bin/bash
 # lol was gonna use a makefile, but let's just keep it simple
 
-SRC=("src/3pw.c")
+SRC=("src/main_3pw.c")
 OUT="bin/3pw"
 
 CC=${1:-$(which gcc)}

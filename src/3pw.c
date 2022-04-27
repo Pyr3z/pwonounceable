@@ -11,10 +11,15 @@
  *    given dictionary (in this case, a standard GNU English dictionary).
  * 
  *    Levi's v2 Changelog:
- *    - Added Pascal Case capitalization
- *    - Currently only supports 2 optional arguments:
- *      arg1 - password length : int
- *      arg2 - trigraph capitalization : int
+ *    + Added PascalCase capitalization of variadic wordsize
+ * 
+ *    + Currently supports 3 positional arguments:
+ *      arg1 - string length                  : int
+ *      arg2 - number of strings to generate  : int
+ *      arg3 - wordsize for capitalization    : int
+ *           | pass 0 for no capitalization,
+ *           | or 1 for all caps
+ *      (pass '-' in any argument position to use the default value)
  * 
  *    History:
  *    - THVV  1994-06-01  Coded (v1)
@@ -53,7 +58,6 @@
 #include <stdlib.h> /* atoi, srand, rand, EXIT_SUCCESS */
 #include <time.h>   /* time */
 #include <stdio.h>  /* printf, puts */
-#include <string.h> /* strncmp */
 
 
 /* ~ CONSTANTS */
@@ -785,22 +789,9 @@ int main(int argc, const char* argv[])
   switch (argc - 1)
   {
     case ARGI_CAP: /* yucky magic numbers & strings */
-      if (!strncmp(argv[ARGI_CAP], "--cap", 5))
+      if (argv[ARGI_CAP][0] != '-')
       {
-        if (argv[ARGI_CAP][5])
-          cap = atoi(argv[ARGI_CAP] + 5);
-        else
-          cap = CAP_FIRST;
-      }
-      else if (!strncmp(argv[ARGI_CAP], "--no-cap", 8))
-      {
-        cap = CAP_NONE;
-      }
-      else
-      {
-        printf("WRN arg%d:  \"%s\" is an invalid capitalization arg; "
-               "valid opts: --cap[n], --no-cap;\n"
-               "using default wordsize: %d\n", ARGI_CAP, argv[ARGI_CAP], cap);
+        cap = atoi(argv[ARGI_CAP]);
       }
       /* intentional fall through */
     case ARGI_QTY:

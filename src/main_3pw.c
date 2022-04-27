@@ -813,13 +813,13 @@ int main(int argc, const char* argv[])
         errprintf("DBG: string seed \"%s\" ~> %u\n", argv[ARGI_SEED], seed);
         */
       }
-      break;
+      /* intentional fall through */
     case ARGI_CAP:
       if (argv[ARGI_CAP][0] != '-' || argv[ARGI_CAP][1])
       {
         cap = atoi(argv[ARGI_CAP]);
       }
-      /* intentional fall through */
+      /* ANOTHER intentional fall through */
     case ARGI_QTY:
       if (argv[ARGI_QTY][0] != '-' || argv[ARGI_QTY][1])
       {

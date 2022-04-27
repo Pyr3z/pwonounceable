@@ -99,6 +99,249 @@ static const char CVS[] = "VCCCVCCCVCCCCCVCCCCCVCCC?C"; /* consonants/vowels */
 
 #define N_ABC (int)(sizeof(ABC)-1)
 
+/* raw data: definition finished at EOF */
+static const int TRIS[N_ABC][N_ABC][N_ABC];
+
+
+/* ~ FUNCTION PROTOTYPES */
+static int  Do3pw(int pwl, char out[MAX_OUT_LEN+1]);
+static int  PickTrigraph(int r, char out[3]);
+static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize);
+static bool IsConsonant(char c);
+/* ~ */
+
+
+/* ~ PROGRAM ENTRY ~ begin my ANSI C interpretation of the gpw.js algo */
+int main(int argc, const char* argv[])
+{
+  /* WARNING: CLI argument order is hard-coded! */
+  /* TODO use getopt */
+
+  int pwl, qty, cap;  /* input arguments, in order. */
+  unsigned seed;      /* this one too. */
+
+  pwl  = DEFAULT_PWL;
+  qty  = DEFAULT_QTY;
+  cap  = DEFAULT_CAP;
+  seed = DEFAULT_SEED;
+  switch (argc - 1)
+  {
+    /* yucky magic numbers & strings ... will clean l8ter */
+    case ARGI_SEED:
+      seed = (unsigned)atol(argv[ARGI_SEED]);
+      if (!seed)
+      {
+        seed = strhash(argv[ARGI_SEED]);
+        /*
+        errprintf("DBG: string seed \"%s\" ~> %u\n", argv[ARGI_SEED], seed);
+        */
+      }
+      /* intentional fall through */
+    case ARGI_CAP:
+      if (argv[ARGI_CAP][0] != '-' || argv[ARGI_CAP][1])
+      {
+        cap = atoi(argv[ARGI_CAP]);
+      }
+      /* ANOTHER intentional fall through */
+    case ARGI_QTY:
+      if (argv[ARGI_QTY][0] != '-' || argv[ARGI_QTY][1])
+      {
+        qty = atoi(argv[ARGI_QTY]);
+      }
+      /* weeeeeeeeeeeeeeeeeeeeee. */
+    case ARGI_PWL:
+      if (argv[ARGI_PWL][0] != '-' || argv[ARGI_PWL][1])
+      {
+        pwl = atoi(argv[ARGI_PWL]);
+      }
+      break;
+  }
+
+  if (pwl < 0)
+  {
+    errprintf("ERR arg%d: nonsensical negative value; "
+              "pwl = %d\n", ARGI_PWL, pwl);
+    exit(EXIT_FAILURE_BADINPUT);
+  }
+  else if (MAX_OUT_LEN < pwl)
+  {
+    errprintf("ERR arg%d: %d is too many characters; "
+              "max = %d\n", ARGI_PWL, pwl, MAX_OUT_LEN);
+    exit(EXIT_FAILURE_BADINPUT);
+  }
+  else if (pwl == 0)
+  {
+    /* early-out noop */
+    exit(EXIT_SUCCESS);
+  }
+
+  if (qty < 0) /* == 0 is permitted as valid user input ~> just do no-op */
+  {
+    errprintf("ERR arg%d: %d is an invalid quantity of output strings; "
+              "min = 0\n", ARGI_QTY, qty);
+    exit(EXIT_FAILURE_BADINPUT);
+  }
+
+  /* done parsing input arguments. */
+
+  srand(seed);
+  
+  while (qty --> 0)
+  {
+    char out[MAX_OUT_LEN+1] = { 0 };
+    int  n;
+    
+    n = Do3pw(pwl, out);
+
+    Capitalize(out, cap);
+    puts(out);
+
+    if (n != pwl)
+    {
+      errprintf("WRN: Bad output length? "
+                "pwl = %d, n = %d, output = \"%s\"\n", pwl, n, out);
+    }
+  }
+
+  exit(EXIT_SUCCESS);
+}
+
+
+/* ~ PRIVATE FUNCS --> EOF */
+
+static int Do3pw(int pwl, char out[MAX_OUT_LEN+1])
+{
+  int r, n, sum;
+  int i, j, k;
+
+  /* Begin algo: */
+FirstTrigraph:;
+  r = rand() % N_COMBS;
+  n = PickTrigraph(r, out);
+  if (n < 3)
+  {
+    errprintf("ERR: EXIT_FAILURE_SHITCODE; PickTrigraph() returned %d. "
+              "partial output = \"%s\"\n", n, out);
+    exit(EXIT_FAILURE_SHITCODE);
+  }
+
+  /* ensure not all consonants for first trigraph */
+  if (IsConsonant(out[0]) &&
+      IsConsonant(out[1]) &&
+      IsConsonant(out[2]))
+  {
+    /* reset and try another trigraph. */
+    *((unsigned*)out) = 0x00000000;
+    goto FirstTrigraph;
+  }
+  
+  if (n >= pwl) /* if smol pwl, need to return LESS than a trigraph */
+  {
+    /* note: leaves byte after the NUL unchanged in the case of pwl=1 */
+    out[pwl] = 0;
+    return pwl;
+  }
+  
+  /* use combinatorix lookup to kinda fuzzy select subsequent trigraphs: */
+  while (n < MAX_OUT_LEN && n < pwl)
+  {
+    sum = 0;
+    i = out[n-2] - 'a';
+    j = out[n-1] - 'a';
+
+    for (k = 0; k < N_ABC; ++k)
+    {
+      sum += TRIS[i][j][k];
+    }
+
+    if (!sum)
+    {
+      /* no matching trigraphs at all ... */
+      /* ... so just gonna improvise here ... */
+      static const char VOWELS[] = "aeiouy";
+      out[n++] = VOWELS[r % (sizeof(VOWELS)-1)];
+      continue;
+    }
+
+    r = rand() % sum;
+    sum = 0;
+
+    for (k = 0; k < N_ABC; ++k)
+    {
+      sum += TRIS[i][j][k];
+      if (sum > r)
+      {
+        out[n++] = ABC[k];
+        break;
+      }
+    }
+  } /* end while */
+
+  return n;
+}
+
+static int PickTrigraph(int r, char out[3])
+{
+  int sum;
+  int i, j, k;
+  
+  sum = 0;
+
+  for (i = 0; i < N_ABC; ++i)
+  {
+    for (j = 0; j < N_ABC; ++j)
+    {
+      for (k = 0; k < N_ABC; ++k)
+      {
+        sum += TRIS[i][j][k];
+        if (sum > r)
+        {
+          out[0] = ABC[i];
+          out[1] = ABC[j];
+          out[2] = ABC[k];
+          return 3;
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize)
+{
+  int i;
+
+  if (wordsize == CAP_NONE)
+  {
+    /* valid no-op -> leaves output lowercase */
+    return;
+  }
+
+  if (wordsize < 0)
+  {
+    errprintf("ERR: EXIT_FAILURE_SHITCODE; wordsize = %d, "
+              "partial output = \"%s\"\n", wordsize, out);
+    exit(EXIT_FAILURE_SHITCODE);
+  }
+
+  /* do capitalize */
+  for (i = 0; i < MAX_OUT_LEN+1 && out[i]; i += wordsize)
+  {
+    if (out[i] >= 'a' && out[i] <= 'z')
+      out[i] -= ' ';
+  }
+}
+
+static bool IsConsonant(char c) /* assumes c is lowercase! [a-z] */
+{
+  unsigned i = (c - 'a');
+  return i < N_ABC && CVS[i] == 'C';
+}
+
+
+/* ~ RAW DATA ~> EOF */
+
 /* The next 679 lines are the meat of the thing copy-pasted from the OG js: */
 static const int TRIS[N_ABC][N_ABC][N_ABC] = {{
     /* A A */ {2,0,3,0,0,0,1,0,0,0,0,1,1,1,0,0,0,3,2,0,0,0,0,0,0,0},
@@ -778,240 +1021,3 @@ static const int TRIS[N_ABC][N_ABC][N_ABC] = {{
     /* Z Y */ {0,1,0,0,0,0,4,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0},
     /* Z Z */ {7,0,0,0,1,0,0,0,7,0,0,17,0,0,2,0,0,0,0,0,0,0,1,0,5,0}
 }};
-
-
-/* ~ FUNCTION PROTOTYPES */
-static int  Do3pw(int pwl, char out[MAX_OUT_LEN+1]);
-static int  PickTrigraph(int r, char out[3]);
-static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize);
-static bool IsConsonant(char c);
-/* ~ */
-
-
-/* ~ PROGRAM ENTRY ~ begin my ANSI C interpretation of the gpw.js algo */
-int main(int argc, const char* argv[])
-{
-  /* WARNING: CLI argument order is hard-coded! */
-  /* TODO use getopt */
-
-  int pwl, qty, cap;  /* input arguments, in order. */
-  unsigned seed;      /* this one too. */
-
-  pwl  = DEFAULT_PWL;
-  qty  = DEFAULT_QTY;
-  cap  = DEFAULT_CAP;
-  seed = DEFAULT_SEED;
-  switch (argc - 1)
-  {
-    /* yucky magic numbers & strings ... will clean l8ter */
-    case ARGI_SEED:
-      seed = (unsigned)atol(argv[ARGI_SEED]);
-      if (!seed)
-      {
-        seed = strhash(argv[ARGI_SEED]);
-        /*
-        errprintf("DBG: string seed \"%s\" ~> %u\n", argv[ARGI_SEED], seed);
-        */
-      }
-      /* intentional fall through */
-    case ARGI_CAP:
-      if (argv[ARGI_CAP][0] != '-' || argv[ARGI_CAP][1])
-      {
-        cap = atoi(argv[ARGI_CAP]);
-      }
-      /* ANOTHER intentional fall through */
-    case ARGI_QTY:
-      if (argv[ARGI_QTY][0] != '-' || argv[ARGI_QTY][1])
-      {
-        qty = atoi(argv[ARGI_QTY]);
-      }
-      /* weeeeeeeeeeeeeeeeeeeeee. */
-    case ARGI_PWL:
-      if (argv[ARGI_PWL][0] != '-' || argv[ARGI_PWL][1])
-      {
-        pwl = atoi(argv[ARGI_PWL]);
-      }
-      break;
-  }
-
-  if (pwl < 0)
-  {
-    errprintf("ERR arg%d: nonsensical negative value; "
-              "pwl = %d\n", ARGI_PWL, pwl);
-    exit(EXIT_FAILURE_BADINPUT);
-  }
-  else if (MAX_OUT_LEN < pwl)
-  {
-    errprintf("ERR arg%d: %d is too many characters; "
-              "max = %d\n", ARGI_PWL, pwl, MAX_OUT_LEN);
-    exit(EXIT_FAILURE_BADINPUT);
-  }
-  else if (pwl == 0)
-  {
-    /* early-out noop */
-    exit(EXIT_SUCCESS);
-  }
-
-  if (qty < 0) /* == 0 is permitted as valid user input ~> just do no-op */
-  {
-    errprintf("ERR arg%d: %d is an invalid quantity of output strings; "
-              "min = 0\n", ARGI_QTY, qty);
-    exit(EXIT_FAILURE_BADINPUT);
-  }
-
-  /* done parsing input arguments. */
-
-  srand(seed);
-  
-  while (qty --> 0)
-  {
-    char out[MAX_OUT_LEN+1] = { 0 };
-    int  n;
-    
-    n = Do3pw(pwl, out);
-
-    Capitalize(out, cap);
-    puts(out);
-
-    if (n != pwl)
-    {
-      errprintf("WRN: Bad output length? "
-                "pwl = %d, n = %d, output = \"%s\"\n", pwl, n, out);
-    }
-  }
-
-  exit(EXIT_SUCCESS);
-}
-
-
-/* ~ PRIVATE FUNCS --> EOF */
-
-static int Do3pw(int pwl, char out[MAX_OUT_LEN+1])
-{
-  int r, n, sum;
-  int i, j, k;
-
-  /* Begin algo: */
-FirstTrigraph:;
-  r = rand() % N_COMBS;
-  n = PickTrigraph(r, out);
-  if (n < 3)
-  {
-    errprintf("ERR: EXIT_FAILURE_SHITCODE; PickTrigraph() returned %d. "
-              "partial output = \"%s\"\n", n, out);
-    exit(EXIT_FAILURE_SHITCODE);
-  }
-
-  /* ensure not all consonants for first trigraph */
-  if (IsConsonant(out[0]) &&
-      IsConsonant(out[1]) &&
-      IsConsonant(out[2]))
-  {
-    /* reset and try another trigraph. */
-    *((unsigned*)out) = 0x00000000;
-    goto FirstTrigraph;
-  }
-  
-  if (n >= pwl) /* if smol pwl, need to return LESS than a trigraph */
-  {
-    /* note: leaves byte after the NUL unchanged in the case of pwl=1 */
-    out[pwl] = 0;
-    return pwl;
-  }
-  
-  /* use combinatorix lookup to kinda fuzzy select subsequent trigraphs: */
-  while (n < MAX_OUT_LEN && n < pwl)
-  {
-    sum = 0;
-    i = out[n-2] - 'a';
-    j = out[n-1] - 'a';
-
-    for (k = 0; k < N_ABC; ++k)
-    {
-      sum += TRIS[i][j][k];
-    }
-
-    if (!sum)
-    {
-      /* no matching trigraphs at all ... */
-      /* ... so just gonna improvise here ... */
-      static const char VOWELS[] = "aeiouy";
-      out[n++] = VOWELS[r % (sizeof(VOWELS)-1)];
-      continue;
-    }
-
-    r = rand() % sum;
-    sum = 0;
-
-    for (k = 0; k < N_ABC; ++k)
-    {
-      sum += TRIS[i][j][k];
-      if (sum > r)
-      {
-        out[n++] = ABC[k];
-        break;
-      }
-    }
-  } /* end while */
-
-  return n;
-}
-
-static int PickTrigraph(int r, char out[3])
-{
-  int sum;
-  int i, j, k;
-  
-  sum = 0;
-
-  for (i = 0; i < N_ABC; ++i)
-  {
-    for (j = 0; j < N_ABC; ++j)
-    {
-      for (k = 0; k < N_ABC; ++k)
-      {
-        sum += TRIS[i][j][k];
-        if (sum > r)
-        {
-          out[0] = ABC[i];
-          out[1] = ABC[j];
-          out[2] = ABC[k];
-          return 3;
-        }
-      }
-    }
-  }
-
-  return 0;
-}
-
-static void Capitalize(char out[MAX_OUT_LEN+1], int wordsize)
-{
-  int i;
-
-  if (wordsize == CAP_NONE)
-  {
-    /* valid no-op -> leaves output lowercase */
-    return;
-  }
-
-  if (wordsize < 0)
-  {
-    errprintf("ERR: EXIT_FAILURE_SHITCODE; wordsize = %d, "
-              "partial output = \"%s\"\n", wordsize, out);
-    exit(EXIT_FAILURE_SHITCODE);
-  }
-
-  /* do capitalize */
-  for (i = 0; i < MAX_OUT_LEN+1 && out[i]; i += wordsize)
-  {
-    if (out[i] >= 'a' && out[i] <= 'z')
-      out[i] -= ' ';
-  }
-}
-
-static bool IsConsonant(char c) /* assumes c is lowercase! [a-z] */
-{
-  unsigned i = (c - 'a');
-  return i < N_ABC && CVS[i] == 'C';
-}

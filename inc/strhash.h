@@ -12,7 +12,8 @@
 
 unsigned strnhash(const char* str, int n)
 {
-  unsigned hash = 0xDEADBEEF * 73;
+  unsigned hash = 0xDEADBEEF * n;
+    /* lol i'm too lazy to check if DEADBEEF is even prime (for now) */
 
   while (n --> 0 && str[n])
   {

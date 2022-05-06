@@ -19,6 +19,7 @@
  *      arg3 - wordsize for capitalization    : int
  *           | pass 0 for no capitalization,
  *           | or 1 for all caps
+ *      arg4 - seed for PRNG                  : string
  *      (pass '-' in any argument position to use the default value)
  * 
  *    History:
@@ -132,10 +133,10 @@ int main(int argc, const char* argv[])
       seed = (unsigned)atol(argv[ARGI_SEED]);
       if (!seed)
       {
-        seed = strhash(argv[ARGI_SEED]);
-        /*
-        errprintf("DBG: string seed \"%s\" ~> %u\n", argv[ARGI_SEED], seed);
-        */
+        if (argv[ARGI_SEED][0] != '-' || argv[ARGI_SEED][1])
+          seed = strhash(argv[ARGI_SEED]);
+        else
+          seed = DEFAULT_SEED;
       }
       /* intentional fall through */
     case ARGI_CAP:

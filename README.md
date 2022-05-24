@@ -1,12 +1,12 @@
 # pwonounceable
-Originally (CLI) tools for generating human-pronounceable passwords, this WIP suite has become dedicated to generating pseudo-randomized, general-purpose strings that a human could (pwobably) pronounce.
+CLI tools for generating human-pronounceable passwords, or, pseudo-randomized, general-purpose strings that a human could (pwobably) pronounce.
 
 ## How use?
-So far the only tool here is **3pw** — based off of [Tom Van Vleck's `gpw` program](https://multicians.org/thvv/gpw.html).
+So far, the only tool here is **3pw** — based off of [Tom Van Vleck's `gpw` program](https://multicians.org/thvv/gpw.html).
 1. If you have `gcc` and `bash` handy, you should be able to build by simply running `./make.sh`.
-  - Everything here is tested against ANSI C, so you _should_ be able to compile with virtually any compiler besides GCC.
+    - *Everything here is tested against ANSI C, so you _should_ be able to compile with virtually any compiler in addition to GCC (which I used).*
 2. Run the built binary from any TTY.
-  - Note that if you run and build with WSL, you will only be able to run the binary from a WSL TTY.  The reverse tends not to be true.
+    - *Note that if you run and build with WSL, you will only be able to run the binary from a WSL TTY.  The reverse tends not to be true.*
 3. The current commandline arguments are documented in the header of the `main_*.c` file(s).
 
 ## 3pw example output

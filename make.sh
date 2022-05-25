@@ -20,7 +20,12 @@ mkdir -p ${OUT%/*}
 # compile
 "$CC" ${CCARGS[@]} ${SRC[@]} -o "$OUT"
 
+test $? -ne 0 && exit 1
+
 # if we have a defined /c/path directory, we probably on wsl => copy exe there
-if [[ $? -eq 0 && -d '/mnt/c/path' ]]; then
+if [[ -d '/mnt/c/path' ]]; then
   cp "$OUT" '/mnt/c/path'
+elif [[ -d '/opt' ]]; then
+  cp "$OUT" '/opt'
 fi
+
